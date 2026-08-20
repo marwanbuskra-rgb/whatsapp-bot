@@ -1,34 +1,28 @@
-const { makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
-const express = require('express');
+const baileys = require('@whiskeysockets/baileys');
+const pino = require('pino');
 
-const app = express();
-const port = process.env.PORT || 3000;
-
-app.get('/', (req, res) => res.send('Bot is Running!'));
-app.listen(port, () => console.log(`Server running on port ${port}`));
-
-async function connectToWhatsApp() {
-    const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
+async function startBot() {
+    const { state, saveCreds } = await baileys.useMultiFileAuthState('auth_info');
     
-    const sock = makeWASocket({
+    const sock = baileys.makeWASocket({
         auth: state,
-        printQRInTerminal: true
+        logger: pino({ level: 'silent' })
     });
 
-    sock.ev.on('creds.update', saveCreds);
+    if (!sock.authState.creds.registered) {
+        setTimeout(async () => {
+            let code = await sock.requestPairingCode("213670424893");
+            code = code?.match(/.{1,4}/g)?.join('-') || code;
+            console.log('YOUR PAIRING CODE IS: ' + code);
+        }, 5000);
+    }
 
+    sock.ev.on('creds.update', saveCreds);
     sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect } = update;
-        if (connection === 'close') {
-            const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            console.log('connection closed, reconnecting ', shouldReconnect);
-            if (shouldReconnect) {
-                connectToWhatsApp();
-            }
-        } else if (connection === 'open') {
-            console.log('opened connection successfully!');
+        if (update.connection === 'open') {
+            console.log('تم الربط بنجاح!');
         }
     });
 }
 
-connectToWhatsApp();
+startBot();
