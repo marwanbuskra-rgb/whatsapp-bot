@@ -1,7 +1,5 @@
 const { makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const express = require('express');
-const pino = require('pino');
-const qrcode = require('qrcode-terminal');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -14,22 +12,16 @@ async function connectToWhatsApp() {
     
     const sock = makeWASocket({
         auth: state,
-        logger: pino({ level: 'silent' })
+        printQRInTerminal: true
     });
 
     sock.ev.on('creds.update', saveCreds);
 
     sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect, qr } = update;
-        
-        if (qr) {
-            console.log('Scan this QR code:');
-            qrcode.generate(qr, { small: true });
-        }
-
+        const { connection, lastDisconnect } = update;
         if (connection === 'close') {
             const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            console.log('connection closed due to ', lastDisconnect.error, ', reconnecting ', shouldReconnect);
+            console.log('connection closed, reconnecting ', shouldReconnect);
             if (shouldReconnect) {
                 connectToWhatsApp();
             }
