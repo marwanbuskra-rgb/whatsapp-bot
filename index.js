@@ -1,4 +1,4 @@
-ومنconst baileys = require('@whiskeysockets/baileys');
+const baileys = require('@whiskeysockets/baileys');
 const pino = require('pino');
 
 async function startBot() {
