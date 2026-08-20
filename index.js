@@ -1,5 +1,6 @@
-const⁠ { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
 const express = require('express');
+const yts = require('yt-search');
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -24,28 +25,48 @@ async function connectToWhatsApp() {
         }
     });
 
-    // استلام الرسائل والرد عليها
     sock.ev.on('messages.upsert', async (m) => {
         const msg = m.messages[0];
         if (!msg.message || msg.key.fromMe) return;
 
         const text = (msg.message.conversation || msg.message.extendedTextMessage?.text || "").trim();
         const from = msg.key.remoteJid;
+        const isGroup = from.endsWith('@g.us');
 
-        // الرد على كلمة مرحبا أو الأوامر
-        if (text.toLowerCase() === 'مرحبا' || text.toLowerCase() === 'مرحباً') {
+        if (text.startsWith('.طرد') && isGroup) {
+            const mentioned = msg.message.extendedTextMessage?.contextInfo?.mentionedJid;
+            if (mentioned && mentioned.length > 0) {
+                await sock.groupParticipantsUpdate(from, mentioned, "remove");
+                await sock.sendMessage(from, { text: 'تم طرد العضو بنجاح 🚫' });
+            } else {
+                await sock.sendMessage(from, { text: 'يرجى الإشارة (منشن) للشخص المراد طرده.' });
+            }
+        }
+        else if (text.startsWith('.شغل')) {
+            const searchQuery = text.replace('.شغل', '').trim();
+            if (!searchQuery) {
+                return await sock.sendMessage(from, { text: 'اكتب اسم الأغنية بعد الأمر، مثال: .شغل اسم الأغنية' });
+            }
+            await sock.sendMessage(from, { text: 'جاري البحث عن الصوتية... 🎵' });
+            const r = await yts(searchQuery);
+            const videos = r.videos;
+            if (videos.length > 0) {
+                const song = videos[0];
+                await sock.sendMessage(from, { 
+                    text: `🎵 *تم العثور على المقطع:*\n📌 *العنوان:* ${song.title}\n⏱️ *المدة:* ${song.timestamp}\n🔗 *الرابط:* ${song.url}` 
+                });
+            } else {
+                await sock.sendMessage(from, { text: 'لم يتم العثور على نتائج.' });
+            }
+        }
+        else if (text === 'مرحبا' || text === 'مرحباً') {
             await sock.sendMessage(from, { text: 'أهلاً وسهلاً بك! كيف يمكنني مساعدتك؟' });
         } else if (text === '.الاوامر') {
-            await sock.sendMessage(from, { text: 'قائمة الأوامر المتاحة:\n- مرحبا\n- .الاوامر' });
+            await sock.sendMessage(from, { 
+                text: "📌 *قائمة الأوامر المتاحة:*\n\n1️⃣ `.شغل اسم الأغنية`\n2️⃣ `.طرد @عضو`\n3️⃣ `مرحبا`\n4️⃣ `.الاوامر`" 
+            });
         }
     });
-
-    setTimeout(async () => {
-        if (!sock.authState.creds.registered) {
-            const code = await sock.requestPairingCode("213799518165");
-            console.log(`YOUR PAIRING CODE: ${code}`);
-        }
-    }, 5000);
 }
 
 connectToWhatsApp();
