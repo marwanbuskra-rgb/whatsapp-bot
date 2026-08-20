@@ -1,4 +1,4 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, Browsers } = require('@whiskeysockets/baileys');
 const express = require('express');
 const pino = require('pino');
 const app = express();
@@ -12,21 +12,23 @@ async function connectToWhatsApp() {
     const sock = makeWASocket({
         auth: state,
         logger: pino({ level: 'silent' }),
-        printQRInTerminal: false
+        printQRInTerminal: false,
+        browser: Browsers.macOS("Desktop")
     });
 
     if (!sock.authState.creds.registered) {
         const phoneNumber = "213799518165"; 
         setTimeout(async () => {
             try {
-                const code = await sock.requestPairingCode(phoneNumber);
+                let code = await sock.requestPairingCode(phoneNumber);
+                code = code?.match(/.{1,4}/g)?.join("-") || code;
                 console.log(`\n========================================`);
-                console.log(`📌 كود الربط الخاص بك هو: ${code}`);
+                console.log(`📌 كود الربط الجديد الخاص بك هو: ${code}`);
                 console.log(`========================================\n`);
             } catch (err) {
-                console.log('خطأ في طلب الكود، أعد المحاولة.');
+                console.log('خطأ في طلب الكود، أعد المحاولة.', err);
             }
-        }, 5000);
+        }, 6000);
     }
 
     sock.ev.on('creds.update', saveCreds);
