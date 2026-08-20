@@ -1,6 +1,7 @@
-وتوconst { default: makeWASocket, useMultiFileAuthState, DisconnectReason, Browsers } = require('@whiskeysockets/baileys');
+const { makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const express = require('express');
 const pino = require('pino');
+
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -9,6 +10,7 @@ app.listen(port, () => console.log(`Server running on port ${port}`));
 
 async function connectToWhatsApp() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
+    
     const sock = makeWASocket({
         auth: state,
         logger: pino({ level: 'silent' }),
@@ -16,41 +18,18 @@ async function connectToWhatsApp() {
         browser: Browsers.macOS("Desktop")
     });
 
-    if (!sock.authState.creds.registered) {
-        const phoneNumber = "213799518165"; 
-        setTimeout(async () => {
-            try {
-                let code = await sock.requestPairingCode(phoneNumber);
-                code = code?.match(/.{1,4}/g)?.join("-") || code;
-                console.log(`\n========================================`);
-                console.log(`📌 كود الربط الجديد الخاص بك هو: ${code}`);
-                console.log(`========================================\n`);
-            } catch (err) {
-                console.log('خطأ في طلب الكود، أعد المحاولة.', err);
-            }
-        }, 6000);
-    }
-
     sock.ev.on('creds.update', saveCreds);
 
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect } = update;
         if (connection === 'close') {
-            const shouldReconnect = lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut;
-            if (shouldReconnect) connectToWhatsApp();
+            const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+            console.log('connection closed due to ', lastDisconnect.error, ', reconnecting ', shouldReconnect);
+            if (shouldReconnect) {
+                connectToWhatsApp();
+            }
         } else if (connection === 'open') {
-            console.log('WhatsApp Bot Connected Successfully!');
-        }
-    });
-
-    sock.ev.on('messages.upsert', async (m) => {
-        const msg = m.messages[0];
-        if (!msg.message || msg.key.fromMe) return;
-        const text = (msg.message.conversation || msg.message.extendedTextMessage?.text || "").trim();
-        const from = msg.key.remoteJid;
-        
-        if (text === '.الاوامر') {
-            await sock.sendMessage(from, { text: "✅ البوت يعمل بنجاح ومربوط برقمك!" });
+            console.log('opened connection successfully!');
         }
     });
 }
