@@ -10,20 +10,25 @@ async function connectToWhatsApp() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
     const sock = makeWASocket({
         auth: state,
-        printQRInTerminal: true
+        printQRInTerminal: false
     });
     
     sock.ev.on('creds.update', saveCreds);
     sock.ev.on('connection.update', (update) => {
         const { connection } = update;
         if(connection === 'close') {
-            console.log('Connection closed, reconnecting...');
             connectToWhatsApp();
         } else if(connection === 'open') {
             console.log('WhatsApp Bot Connected Successfully!');
         }
     });
+
+    setTimeout(async () => {
+        if (!sock.authState.creds.registered) {
+            const code = await sock.requestPairingCode("213799518165");
+            console.log(`YOUR PAIRING CODE: ${code}`);
+        }
+    }, 5000);
 }
 
 connectToWhatsApp();
-
