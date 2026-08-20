@@ -1,4 +1,4 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, Browsers } = require('@whiskeysockets/baileys');
+وتوconst { default: makeWASocket, useMultiFileAuthState, DisconnectReason, Browsers } = require('@whiskeysockets/baileys');
 const express = require('express');
 const pino = require('pino');
 const app = express();
@@ -12,7 +12,7 @@ async function connectToWhatsApp() {
     const sock = makeWASocket({
         auth: state,
         logger: pino({ level: 'silent' }),
-        printQRInTerminal: false,
+        printQRInTerminal: true,
         browser: Browsers.macOS("Desktop")
     });
 
