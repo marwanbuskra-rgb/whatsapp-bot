@@ -14,8 +14,7 @@ async function connectToWhatsApp() {
     const sock = makeWASocket({
         auth: state,
         logger: pino({ level: 'silent' }),
-        printQRInTerminal: true,
-        browser: Browsers.macOS("Desktop")
+        printQRInTerminal: true
     });
 
     sock.ev.on('creds.update', saveCreds);
