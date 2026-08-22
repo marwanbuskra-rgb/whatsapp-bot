@@ -1,36 +1,42 @@
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const pino = require('pino');
-const qrcode = require('qrcode-terminal');
 
 async function startBot() {
-    const { state, saveCreds } = await useMultiFileAuthState('auth_info');
+    const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
     
     const sock = makeWASocket({
-        logger: pino({ level: 'silent' }),
         auth: state,
-        printQRInTerminal: true // هذا السطر يخلي البوت يطبع الـ QR Code مباشرة في السجلات
+        printQRInTerminal: false,
+        logger: pino({ level: 'fatal' })
     });
 
-    sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect, qr } = update;
-        
-        if (qr) {
-            console.log('SCAN THIS QR CODE TO LOGIN:');
-            qrcode.generate(qr, { small: true }); // يرسم الـ QR بشكل مرتب وصغير في السجلات
-        }
+    sock.ev.on('creds.update', saveCreds);
 
+    sock.ev.on('connection.update', async (update) => {
+        const { connection, lastDisconnect } = update;
+        
         if (connection === 'close') {
-            const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut;
-            console.log('Connection closed due to ', lastDisconnect?.error, ', reconnecting ', shouldReconnect);
+            const shouldReconnect = lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut;
+            console.log('انقطع الاتصال، جاري إعادة المحاولة...', shouldReconnect);
             if (shouldReconnect) {
                 startBot();
             }
         } else if (connection === 'open') {
-            console.log('opened connection successfully!');
+            console.log('تم اتصال البوت بنجاح!');
         }
     });
 
-    sock.ev.on('creds.update', saveCreds);
+    if (!sock.authState.creds.registered) {
+        setTimeout(async () => {
+            const phoneNumber = "380717572499"; 
+            try {
+                const code = await sock.requestPairingCode(phoneNumber);
+                console.log(`\n\n=== كود الاقتران الخاص بك هو: ${code} ===\n\n`);
+            } catch (err) {
+                console.error("خطأ في طلب كود الاقتران:", err);
+            }
+        }, 4000);
+    }
 }
 
 startBot();
