@@ -1,7 +1,8 @@
 {
   "name": "whatsapp-bot",
   "version": "1.0.0",
-  "description": "WhatsApp Bot using Baileys",
+  "type": "module",
+  "description": "WhatsApp Bot using Bailey",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
