@@ -1,5 +1,6 @@
-const { default: makeWASocket, useMultiFileAuthState, disconnectReason } = require('@whiskeysockets/baileys');
-const pino = require('pino');
+import { makeWASocket, useMultiFileAuthState } from '@whiskeysockets/baileys';
+import pino from 'pino';
+
 
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('./session');
